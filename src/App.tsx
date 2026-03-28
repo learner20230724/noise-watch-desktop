@@ -80,13 +80,22 @@ function App() {
     })()
   }, [])
 
+  // Persist snapshot on an interval to avoid blocking the UI/audio loop.
   useEffect(() => {
-    const snapshot = createSnapshot({ settings, stats, logs })
-    void writeSnapshot(snapshot).then((result) => {
+    const writeNow = async () => {
+      const snapshot = createSnapshot({ settings, stats, logs })
+      const result = await writeSnapshot(snapshot)
       if (result.filePath) {
         setLastJsonPath(result.filePath)
       }
-    })
+    }
+
+    void writeNow()
+    const timer = window.setInterval(() => {
+      void writeNow()
+    }, 1000)
+
+    return () => window.clearInterval(timer)
   }, [settings, stats, logs])
 
   useEffect(() => {
@@ -182,12 +191,15 @@ function App() {
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: settings.inputDeviceId
-          ? { deviceId: { ideal: settings.inputDeviceId } }
+        audio: settings.inputDeviceId && settings.inputDeviceId !== 'default'
+          ? { deviceId: { exact: settings.inputDeviceId } }
           : true,
       })
 
       const audioContext = new AudioContext()
+      if (audioContext.state === 'suspended') {
+        await audioContext.resume()
+      }
       const analyser = audioContext.createAnalyser()
       analyser.fftSize = 2048
       analyser.smoothingTimeConstant = 0.15
@@ -275,6 +287,9 @@ function App() {
           selectedBandDb: selectedDb,
           impactCount: impactTimesRef.current.length,
           elapsedSeconds: startTimeRef.current ? Math.floor((now - startTimeRef.current) / 1000) : prev.elapsedSeconds,
+          lastEventAt: prev.lastEventAt,
+          statusTextZh: '监听中',
+          statusTextEn: 'Listening',
         }))
 
         frameRef.current = requestAnimationFrame(tick)
