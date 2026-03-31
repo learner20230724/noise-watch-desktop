@@ -10,6 +10,7 @@ export type MonitoringSettings = {
   inputDeviceId: string
   alertAudioName: string
   alertAudioPath: string
+  alertVolumePercent: number
   language: Language
   frequencyBand: FrequencyBand
   threshold: number

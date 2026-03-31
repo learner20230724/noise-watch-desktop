@@ -26,7 +26,7 @@ async function main() {
   const viteCli = resolveBinFromPackage('vite', 'bin/vite.js')
   const electronCli = resolveBinFromPackage('electron', 'cli.js')
 
-  run(process.execPath, [viteCli, '--strictPort'], {
+  run(process.execPath, [viteCli, '--strictPort', '--port', port], {
     env: { ...process.env, VITE_PORT: port },
   })
   await waitFor(url, 30000)

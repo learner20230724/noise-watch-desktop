@@ -28,6 +28,7 @@ export function defaultSettings(): MonitoringSettings {
     inputDeviceId: 'default',
     alertAudioName: '',
     alertAudioPath: '',
+    alertVolumePercent: 100,
     language: 'zh',
     frequencyBand: 'low',
     threshold: -35,
@@ -131,6 +132,10 @@ export function selectedBandDb(
 
 export function bandToPercent(db: number) {
   return Math.max(0, Math.min(100, ((db + 120) / 120) * 100))
+}
+
+export function alertGainFromPercent(alertVolumePercent: number) {
+  return Math.max(0, alertVolumePercent / 100)
 }
 
 export function toFileUrl(filePath: string) {

@@ -330,6 +330,10 @@
   color: var(--text);
 }
 
+.audioSettings {
+  margin-top: 14px;
+}
+
 .pathHints {
   margin-top: 12px;
   font-size: 11px;

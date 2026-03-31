@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 import {
   bandToPercent,
@@ -10,6 +10,7 @@ import {
   listAudioInputDevices,
   selectedBandDb,
   toFileUrl,
+  alertGainFromPercent,
 } from './appLogic'
 import { createSnapshot, exportCsv, writeSnapshot } from './persistence'
 import { bandRangeText, t } from './i18n'
@@ -35,6 +36,9 @@ function App() {
   const [lastJsonPath, setLastJsonPath] = useState('')
   const [lastCsvPath, setLastCsvPath] = useState('')
 
+  const settingsRef = useRef(settings)
+  const statsRef = useRef(stats)
+  const pendingAlertSetupRef = useRef<Promise<void> | null>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
   const analyserRef = useRef<AnalyserNode | null>(null)
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null)
@@ -45,8 +49,149 @@ function App() {
   const lastAboveThresholdRef = useRef(false)
   const cooldownUntilRef = useRef(0)
   const alertAudioRef = useRef<HTMLAudioElement | null>(null)
+  const alertAudioContextRef = useRef<AudioContext | null>(null)
+  const alertAudioSourceRef = useRef<MediaElementAudioSourceNode | null>(null)
+  const alertAudioGainRef = useRef<GainNode | null>(null)
+  const alertAudioSetupSeqRef = useRef(0)
 
   const copy = useMemo(() => t(settings.language), [settings.language])
+  const bandOptions = [
+    { label: `${copy.low} (${bandRangeText.low[settings.language]})`, value: 'low' },
+    { label: `${copy.mid} (${bandRangeText.mid[settings.language]})`, value: 'mid' },
+    { label: `${copy.high} (${bandRangeText.high[settings.language]})`, value: 'high' },
+  ]
+
+  const pushLog = useCallback((log: EventLog) => {
+    setLogs((prev) => [log, ...prev].slice(0, maxLogs))
+  }, [])
+
+  useEffect(() => {
+    settingsRef.current = settings
+  }, [settings])
+
+  useEffect(() => {
+    statsRef.current = stats
+  }, [stats])
+
+  async function clearAlertAudio() {
+    pendingAlertSetupRef.current = null
+    const audio = alertAudioRef.current
+    const source = alertAudioSourceRef.current
+    const gain = alertAudioGainRef.current
+    const context = alertAudioContextRef.current
+
+    alertAudioRef.current = null
+    alertAudioSourceRef.current = null
+    alertAudioGainRef.current = null
+    alertAudioContextRef.current = null
+
+    audio?.pause()
+    if (audio) {
+      audio.removeAttribute('src')
+      audio.load()
+    }
+    source?.disconnect()
+    gain?.disconnect()
+
+    if (context && context.state !== 'closed') {
+      await context.close()
+    }
+  }
+
+  async function ensureAlertAudioReady(filePath: string) {
+    const currentPath = alertAudioRef.current?.dataset.filePath
+    if (currentPath === filePath && alertAudioContextRef.current && alertAudioGainRef.current) {
+      return
+    }
+
+    if (pendingAlertSetupRef.current) {
+      await pendingAlertSetupRef.current
+      const readyPath = alertAudioRef.current?.dataset.filePath
+      if (readyPath === filePath && alertAudioContextRef.current && alertAudioGainRef.current) {
+        return
+      }
+    }
+
+    const setupSeq = ++alertAudioSetupSeqRef.current
+    const setupPromise = (async () => {
+      await clearAlertAudio()
+      if (setupSeq !== alertAudioSetupSeqRef.current) {
+        return
+      }
+
+      const audio = new Audio(toFileUrl(filePath))
+      audio.preload = 'auto'
+      audio.volume = 1
+      audio.dataset.filePath = filePath
+
+      let context: AudioContext | null = null
+      let source: MediaElementAudioSourceNode | null = null
+      let gain: GainNode | null = null
+
+      try {
+        context = new AudioContext()
+        source = context.createMediaElementSource(audio)
+        gain = context.createGain()
+        gain.gain.value = alertGainFromPercent(settingsRef.current.alertVolumePercent)
+        source.connect(gain)
+        gain.connect(context.destination)
+
+        if (setupSeq !== alertAudioSetupSeqRef.current) {
+          audio.pause()
+          audio.removeAttribute('src')
+          audio.load()
+          source.disconnect()
+          gain.disconnect()
+          await context.close()
+          return
+        }
+
+        alertAudioRef.current = audio
+        alertAudioContextRef.current = context
+        alertAudioSourceRef.current = source
+        alertAudioGainRef.current = gain
+      } catch (error) {
+        audio.pause()
+        audio.removeAttribute('src')
+        audio.load()
+        source?.disconnect()
+        gain?.disconnect()
+        if (context && context.state !== 'closed') {
+          await context.close().catch(() => undefined)
+        }
+        throw error
+      }
+    })()
+
+    pendingAlertSetupRef.current = setupPromise
+
+    try {
+      await setupPromise
+    } finally {
+      if (pendingAlertSetupRef.current === setupPromise) {
+        pendingAlertSetupRef.current = null
+      }
+    }
+  }
+
+  async function playAlertAudio() {
+    const { alertAudioPath } = settingsRef.current
+    if (!alertAudioPath) return
+
+    await ensureAlertAudioReady(alertAudioPath)
+
+    const audio = alertAudioRef.current
+    const context = alertAudioContextRef.current
+    if (!audio || !context) return
+
+    if (context.state === 'suspended') {
+      await context.resume()
+    }
+
+    audio.pause()
+    audio.currentTime = 0
+    await audio.play()
+  }
 
   async function refreshDevices() {
     try {
@@ -79,6 +224,12 @@ function App() {
       }
     })()
   }, [])
+
+  useEffect(() => {
+    if (alertAudioGainRef.current) {
+      alertAudioGainRef.current.gain.value = alertGainFromPercent(settings.alertVolumePercent)
+    }
+  }, [settings.alertVolumePercent])
 
   // Persist snapshot on an interval to avoid blocking the UI/audio loop.
   useEffect(() => {
@@ -116,25 +267,11 @@ function App() {
   }, [settings, stats, logs])
 
   useEffect(() => {
-    if (!settings.alertAudioPath) {
-      alertAudioRef.current = null
-      return
+    return () => {
+      alertAudioSetupSeqRef.current += 1
+      void clearAlertAudio()
     }
-
-    const audio = new Audio(toFileUrl(settings.alertAudioPath))
-    audio.preload = 'auto'
-    alertAudioRef.current = audio
-  }, [settings.alertAudioPath])
-
-  const bandOptions: { label: string; value: FrequencyBand }[] = [
-    { label: `${copy.low} (${bandRangeText.low[settings.language]})`, value: 'low' },
-    { label: `${copy.mid} (${bandRangeText.mid[settings.language]})`, value: 'mid' },
-    { label: `${copy.high} (${bandRangeText.high[settings.language]})`, value: 'high' },
-  ]
-
-  function pushLog(log: EventLog) {
-    setLogs((prev) => [log, ...prev].slice(0, maxLogs))
-  }
+  }, [])
 
   function stopMonitoring() {
     setIsMonitoring(false)
@@ -179,11 +316,34 @@ function App() {
     const picked = await window.desktopAPI?.chooseAlertAudio?.()
     if (!picked) return
 
+    alertAudioSetupSeqRef.current += 1
+    await clearAlertAudio()
+
     setSettings((prev) => ({
       ...prev,
       alertAudioName: picked.fileName,
       alertAudioPath: picked.filePath,
     }))
+
+    try {
+      await ensureAlertAudioReady(picked.filePath)
+    } catch (error) {
+      const currentSettings = settingsRef.current
+      const currentStats = statsRef.current
+      pushLog(
+        createLogEvent({
+          band: currentSettings.frequencyBand,
+          peakDb: currentStats.peakDb,
+          selectedBandDb: currentStats.selectedBandDb,
+          threshold: currentSettings.threshold,
+          impactCount: currentStats.impactCount,
+          triggered: false,
+          messageZh: '提醒音初始化失败，请检查系统播放权限或重新选择音频文件。',
+          messageEn: 'Alert audio initialization failed. Check system playback permission or reselect the audio file.',
+        }),
+      )
+      console.error(error)
+    }
   }
 
   async function startMonitoring() {
@@ -224,48 +384,59 @@ function App() {
       const tick = () => {
         const analyserNode = analyserRef.current
         const context = audioContextRef.current
+        const currentSettings = settingsRef.current
         if (!analyserNode || !context) {
           return
         }
 
         analyserNode.getFloatFrequencyData(frequencyData)
         const levels = calculateBandLevels(frequencyData, context.sampleRate, analyserNode.fftSize)
-        const selectedDb = selectedBandDb(settings.frequencyBand, levels)
+        const selectedDb = selectedBandDb(currentSettings.frequencyBand, levels)
         const now = performance.now()
-        const windowMs = settings.timeWindowSeconds * 1000
+        const windowMs = currentSettings.timeWindowSeconds * 1000
 
         impactTimesRef.current = impactTimesRef.current.filter((ts) => now - ts <= windowMs)
 
-        if (selectedDb >= settings.threshold) {
+        if (selectedDb >= currentSettings.threshold) {
           if (!lastAboveThresholdRef.current) {
             impactTimesRef.current.push(now)
             const impactCount = impactTimesRef.current.length
-            const triggered = impactCount >= settings.triggerCount && now >= cooldownUntilRef.current
+            const triggered = impactCount >= currentSettings.triggerCount && now >= cooldownUntilRef.current
 
             const log = createLogEvent({
-              band: settings.frequencyBand,
+              band: currentSettings.frequencyBand,
               peakDb: levels.peak,
               selectedBandDb: selectedDb,
-              threshold: settings.threshold,
+              threshold: currentSettings.threshold,
               impactCount,
               triggered,
               messageZh: triggered
-                ? `达到阈值，已触发本机提醒。`
-                : `检测到一次超过阈值的${settings.frequencyBand}频事件。`,
+                ? '达到阈值，已触发本机提醒。'
+                : `检测到一次超过阈值的${currentSettings.frequencyBand}频事件。`,
               messageEn: triggered
                 ? 'Threshold met. Local alert played.'
-                : `Detected one ${settings.frequencyBand}-band event above threshold.`,
+                : `Detected one ${currentSettings.frequencyBand}-band event above threshold.`,
             })
 
             pushLog(log)
 
             if (triggered) {
-              cooldownUntilRef.current = now + settings.cooldownSeconds * 1000
+              cooldownUntilRef.current = now + currentSettings.cooldownSeconds * 1000
               impactTimesRef.current = []
-              if (alertAudioRef.current) {
-                alertAudioRef.current.currentTime = 0
-                void alertAudioRef.current.play().catch(() => undefined)
-              }
+              void playAlertAudio().catch(() => {
+                pushLog(
+                  createLogEvent({
+                    band: currentSettings.frequencyBand,
+                    peakDb: levels.peak,
+                    selectedBandDb: selectedDb,
+                    threshold: currentSettings.threshold,
+                    impactCount,
+                    triggered: false,
+                    messageZh: '提醒音播放失败，请检查系统播放权限或重新选择音频文件。',
+                    messageEn: 'Alert audio playback failed. Check system playback permission or reselect the audio file.',
+                  }),
+                )
+              })
               setStats((prev) => ({
                 ...prev,
                 triggerCount: prev.triggerCount + 1,
@@ -300,10 +471,10 @@ function App() {
       setIsMonitoring(false)
       pushLog(
         createLogEvent({
-          band: settings.frequencyBand,
+          band: settingsRef.current.frequencyBand,
           peakDb: -120,
           selectedBandDb: -120,
-          threshold: settings.threshold,
+          threshold: settingsRef.current.threshold,
           impactCount: 0,
           triggered: false,
           messageZh: '无法启动麦克风监听，请检查系统权限。',
@@ -372,6 +543,17 @@ function App() {
             <button className="secondaryButton" type="button" onClick={handleChooseAudio}>
               {copy.chooseFile}
             </button>
+          </div>
+          <div className="audioSettings">
+            <SliderRow
+              label={copy.alertVolume}
+              min={0}
+              max={2000}
+              step={10}
+              value={settings.alertVolumePercent}
+              onChange={(value) => setSettings((prev) => ({ ...prev, alertVolumePercent: value }))}
+              rightText={`${settings.alertVolumePercent}%`}
+            />
           </div>
           <div className="pathHints">
             <span>JSON: {lastJsonPath || '-'}</span>
