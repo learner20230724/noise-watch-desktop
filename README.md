@@ -1,17 +1,73 @@
-# 正反馈楼上楼下好邻居（Noise Watch Desktop）
+<div align="center">
 
-一个用于 **Windows / macOS** 的桌面监听提醒工具。
+# 正反馈楼上楼下好邻居
 
-## 当前支持
+### Noise Watch Desktop
 
-- 支持平台：**macOS、Windows**
-- 支持程序形态：**桌面应用（Electron）**
-- 支持输入：**麦克风输入设备选择与刷新**
-- 支持监听频段：**低频 / 中频 / 高频**
-- 支持规则：**阈值 + 次数 + 时间窗口 + 冷却时间**
-- 支持提醒：**本机自定义提醒音频播放**
-- 支持数据落地：**实时 JSON + 每 5 分钟自动覆盖导出 CSV**
-- 支持界面语言：**中文 / English**
+一个面向 **Windows / macOS** 的本地监听提醒桌面应用。
+聚焦 **设备选择、频段监听、阈值判定、本机提醒、JSON 实时写入、CSV 周期导出**。
+
+[![Release](https://img.shields.io/github/v/release/learner20230724/noise-watch-desktop?style=for-the-badge)](https://github.com/learner20230724/noise-watch-desktop/releases/tag/v0.0.0)
+[![Platforms](https://img.shields.io/badge/platform-Windows%20%7C%20macOS-4c8eda?style=for-the-badge)](https://github.com/learner20230724/noise-watch-desktop/releases/tag/v0.0.0)
+[![License](https://img.shields.io/github/license/learner20230724/noise-watch-desktop?style=for-the-badge)](./LICENSE)
+
+[下载 Windows 版](https://github.com/learner20230724/noise-watch-desktop/releases/download/v0.0.0/Setup.0.0.0.exe) · [下载 macOS arm64 版](https://github.com/learner20230724/noise-watch-desktop/releases/download/v0.0.0/-0.0.0-arm64.dmg) · [查看 Releases](https://github.com/learner20230724/noise-watch-desktop/releases/tag/v0.0.0)
+
+</div>
+
+---
+
+## 项目简介
+
+**正反馈楼上楼下好邻居（Noise Watch Desktop）** 是一个用于本机提醒与记录的跨平台桌面工具。
+
+它会持续监听你选择的输入设备，并在指定频段上按照：
+
+- **阈值（Threshold）**
+- **触发次数（Impact Count）**
+- **时间窗口（Time Window）**
+- **冷却时间（Cooldown）**
+
+来判断是否发生了目标事件。触发后，应用会：
+
+- 在**本机**播放你选择的提醒音
+- 实时覆盖写入一份 JSON 快照
+- 每 5 分钟覆盖导出一份 CSV 文件
+
+> 本项目仅用于本机提醒与本地记录，不提供远程上传或云端分析。
+
+---
+
+## 下载与发布
+
+### 当前可用安装包
+
+| 平台 | 类型 | 状态 | 下载 |
+| --- | --- | --- | --- |
+| Windows x64 | NSIS 安装包 | 已可直接下载安装 | [Setup.0.0.0.exe](https://github.com/learner20230724/noise-watch-desktop/releases/download/v0.0.0/Setup.0.0.0.exe) |
+| macOS arm64 | DMG 安装包 | 初始可安装版本 | [-0.0.0-arm64.dmg](https://github.com/learner20230724/noise-watch-desktop/releases/download/v0.0.0/-0.0.0-arm64.dmg) |
+
+### 当前发布说明
+
+- **macOS arm64**：初始可安装版本。包含桌面界面、设备选择、频段选择、阈值判定、本机提醒、JSON 实时写入和每 5 分钟 CSV 导出。
+- **Windows x64**：已提供可直接下载安装版本，核心桌面能力与当前主线一致。
+- 完整发布页：<https://github.com/learner20230724/noise-watch-desktop/releases/tag/v0.0.0>
+
+---
+
+## 功能概览
+
+| 能力 | 状态 | 说明 |
+| --- | --- | --- |
+| 桌面界面 | 已支持 | Electron + React 桌面应用 |
+| 输入设备选择与刷新 | 已支持 | 选择麦克风输入设备并刷新列表 |
+| 频段选择 | 已支持 | 低频 / 中频 / 高频 |
+| 阈值判定 | 已支持 | 支持阈值、次数、时间窗口、冷却时间组合规则 |
+| 本机提醒 | 已支持 | 触发后播放你自己选择的本地音频 |
+| JSON 实时写入 | 已支持 | 持续覆盖写入最新事件快照 |
+| CSV 周期导出 | 已支持 | 每 5 分钟自动覆盖导出 |
+| 双语界面 | 已支持 | 中文 / English |
+| 打包平台 | 已支持 | Windows / macOS |
 
 ---
 
@@ -27,128 +83,202 @@
 
 ---
 
-## 功能说明
+## 使用方式
 
-这是一个跨平台桌面应用（Windows / macOS），用于：
+### 1. 下载并安装
 
-- 选择麦克风输入设备并实时监听
-- 选择监听频段：低频 / 中频 / 高频
-- 按“阈值 + 次数 + 时间窗口 + 冷却时间”的规则进行事件判定
-- 触发后在**本机**播放提醒音（你自己选择音频文件）
-- 运行过程中实时写入本地 JSON
-- 每 5 分钟自动导出并覆盖一份 CSV（便于后续查看/取证）
+从上面的发布链接下载对应平台的安装包并安装。
 
-> 说明：本项目仅用于本机提醒与记录。
+### 2. 首次启动授权
+
+首次启动时，系统可能会请求：
+
+- 麦克风权限
+- 文件访问权限（选择提醒音频时）
+
+请按系统提示允许。
+
+### 3. 选择输入设备
+
+在界面中选择你要监听的麦克风输入设备。
+
+### 4. 选择监听频段
+
+当前支持：
+
+- 低频
+- 中频
+- 高频
+
+### 5. 配置判定规则
+
+你可以组合调整：
+
+- **Threshold**：达到多大强度才算一次有效命中
+- **Impact Count**：在窗口内累计命中多少次才触发
+- **Time Window**：统计命中的时间范围
+- **Cooldown**：两次触发之间的最小间隔
+
+### 6. 设置提醒音
+
+触发后会在**本机**播放你选择的本地音频文件。
+
+### 7. 查看本地记录
+
+应用运行中会持续写入：
+
+- JSON 最新快照
+- CSV 周期导出文件
+
+界面中也会显示这些文件的实际路径。
 
 ---
 
-## 开发环境要求
+## 数据输出
 
-- Node.js（建议 18+，你当前环境已可用）
+应用运行时会写入 Electron 标准 `userData` 目录。
+
+### 文件位置
+
+- 实时 JSON：`events/latest-events.json`
+- 周期 CSV：`exports/latest-events.csv`
+
+### 输出策略
+
+- JSON：持续覆盖写入最新状态
+- CSV：每 5 分钟自动覆盖导出
+
+这使它既适合日常提醒，也适合保留一份结构化的本地记录。
+
+---
+
+## 本地开发
+
+### 环境要求
+
+- **Node.js 22 LTS 推荐**
+- 最低建议：**Node.js 20.19+** 或 **22.12+**
+- npm
 - macOS / Windows
 
----
-
-## 安装依赖
-
-在项目根目录执行：
+### 安装依赖
 
 ```bash
 npm install
 ```
 
----
-
-## 开发模式启动（推荐）
+### 启动开发模式
 
 ```bash
 npm run dev
 ```
 
-会打开 Electron 窗口。
+会启动：
 
-首次启动可能会弹出系统权限请求（麦克风），请选择允许。
+- Vite 开发服务器
+- Electron 桌面窗口
 
----
+### 构建前端产物
 
-## 打包发布（生成安装包）
+```bash
+npm run build
+```
+
+### 打包桌面应用
 
 ```bash
 npm run dist
 ```
 
-打包完成后会在 `dist/` 下生成：
+打包完成后，常见产物包括：
 
-- macOS：`dist/*.dmg` 以及 `dist/mac-*/xxx.app`
-- Windows：`dist/*.exe`（在 Windows 上打包时生成）
-
----
-
-## 为什么我“看不到 app”？
-
-如果你之前打过包，后来又运行了 `npm run build`，Vite 会清理输出目录，导致打包产物（.app/.dmg）被覆盖/删除。
-
-本项目已做了调整：
-
-- 前端构建输出到：`dist/renderer/`
-- 安装包输出到：`dist/`
-
-所以之后再运行 `npm run build` 不会把 `.dmg/.app` 删掉。
+- `dist/renderer/`：前端构建产物
+- `dist/win-unpacked/`：Windows 解包目录
+- `dist/*.exe`：Windows 安装包
+- `dist/*.dmg`：macOS 安装包（在 macOS 上打包时生成）
 
 ---
 
-## 本地数据保存位置
+## 为什么现在看起来更稳定了？
 
-应用运行时会写到系统的 `userData` 目录（Electron 标准路径）。
+项目当前已经把构建输出和打包输出拆开：
 
-- 实时 JSON（覆盖写）：`events/latest-events.json`
-- 每 5 分钟 CSV（覆盖写）：`exports/latest-events.csv`
+- 前端构建输出：`dist/renderer/`
+- 安装包输出：`dist/`
 
-在界面中也会显示 JSON/CSV 实际文件路径。
+这意味着之后再次执行 `npm run build` 时，不会再把已有的安装包产物误清掉。
 
 ---
 
 ## 常见问题
 
-### 1）macOS 提示“无法打开/来自未知开发者”
+### 1）macOS 提示“无法打开”或“来自未知开发者”
 
-这是未签名应用的常见提示。按这个路径处理：
+这是未签名应用的常见提示。可以按这个路径处理：
 
 - 系统设置 → 隐私与安全性
 - 找到被拦截的应用提示
 - 点击“仍要打开”
 
-### 2）监听不到设备/设备名称为空
+### 2）设备名称为空，或者监听不到输入设备
 
-浏览器/系统有时需要先获取一次麦克风权限，设备 label 才会显示完整。
+浏览器 / 系统通常需要先拿到一次麦克风权限，设备 label 才会显示完整。
 
-### 3）为什么显示的是负数 dB？
+### 3）为什么界面显示的是负数 dB？
 
-当前界面显示的是 **dBFS**（数字音频相对满刻度的分贝），不是现实世界校准后的 dB SPL。
+当前界面显示的是 **dBFS**，不是现实世界校准后的 **dB SPL**。
 
 - `0 dBFS`：数字系统允许的最大值
 - `-70 dBFS`：表示当前输入很弱，但这是正常现象
-- 越接近 `0`，说明当前音频越强
+- 数值越接近 `0`，说明当前输入越强
+
+### 4）为什么开发模式启动失败并提示 5173 端口被占用？
+
+开发模式默认使用 `5173` 端口启动 Vite。
+如果本机已经有其他进程占用了这个端口，Vite 会直接退出。
+
+此时可以：
+
+- 结束已经占用 `5173` 的进程
+- 或改用其他端口后再启动（脚本会读取 `VITE_PORT`）
+
+### 5）Windows 和 macOS 的功能是否一致？
+
+当前主线功能一致，差异主要在：
+
+- 安装包格式不同
+- 系统权限弹窗不同
+- 未签名应用在不同平台的提示方式不同
 
 ---
 
-## 开源协议
+## 项目结构
+
+```text
+electron/        Electron 主进程与 preload
+src/             React UI 与监听/判定逻辑
+scripts/         开发辅助脚本
+docs/            README 截图等文档资源
+dist/renderer/   前端构建产物
+dist/            electron-builder 打包输出
+```
+
+---
+
+## 反馈与贡献
+
+如果你发现问题，或者想补充功能、改进文档，欢迎：
+
+- 提交 Issue
+- 发起 Pull Request
+- 为项目点一个 Star
+
+仓库地址：<https://github.com/learner20230724/noise-watch-desktop>
+
+---
+
+## License
 
 本项目使用 **MIT License**。
 
----
-
-## 目录结构（简化）
-
-- `electron/`：Electron 主进程与 preload
-- `src/`：React UI + 监听/判定逻辑
-- `scripts/`：开发启动辅助脚本
-- `docs/`：README 图片等文档资源
-- `dist/renderer/`：前端构建产物
-- `dist/`：electron-builder 打包输出
-
----
-
-## 如果这个项目对你有帮助
-
-欢迎给仓库点一个 **Star**，这会非常有帮助。
+详见 [LICENSE](./LICENSE)。
