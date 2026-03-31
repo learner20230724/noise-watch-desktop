@@ -1,7 +1,7 @@
 {
   "name": "noise-watch-desktop",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
@@ -40,18 +40,20 @@
     "appId": "com.learner.noisewatch",
     "productName": "正反馈楼上楼下好邻居",
     "files": [
-      "dist/**/*",
+      "dist/renderer/**/*",
       "electron/**/*",
       "package.json"
     ],
     "directories": {
-      "buildResources": "build"
+      "buildResources": "build",
+      "output": "release"
     },
     "mac": {
       "target": "dmg"
     },
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "executableName": "noise-watch-desktop"
     }
   }
 }

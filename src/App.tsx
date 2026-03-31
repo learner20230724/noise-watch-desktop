@@ -9,7 +9,6 @@ import {
   formatElapsed,
   listAudioInputDevices,
   selectedBandDb,
-  toFileUrl,
   alertGainFromPercent,
 } from './appLogic'
 import { createSnapshot, exportCsv, writeSnapshot } from './persistence'
@@ -26,6 +25,21 @@ const fallbackDevices: DeviceOption[] = [
 ]
 
 const maxLogs = 200
+const waveformHistoryLength = 48
+const waveformUpdateInterval = 4
+const alertAudioLoadTimeoutMs = 5000
+const defaultAlertToneStepMs = 140
+const defaultAlertToneSequence = [880, 1175, 1568]
+
+function createEmptyWaveformHistory() {
+  return Array.from({ length: waveformHistoryLength }, () => 0)
+}
+
+type AlertAudioSelection = {
+  filePath: string
+  fileName: string
+  audioUrl: string
+}
 
 function App() {
   const [settings, setSettings] = useState<MonitoringSettings>(defaultSettings)
@@ -35,6 +49,7 @@ function App() {
   const [isMonitoring, setIsMonitoring] = useState(false)
   const [lastJsonPath, setLastJsonPath] = useState('')
   const [lastCsvPath, setLastCsvPath] = useState('')
+  const [, setWaveformVersion] = useState(0)
 
   const settingsRef = useRef(settings)
   const statsRef = useRef(stats)
@@ -52,7 +67,13 @@ function App() {
   const alertAudioContextRef = useRef<AudioContext | null>(null)
   const alertAudioSourceRef = useRef<MediaElementAudioSourceNode | null>(null)
   const alertAudioGainRef = useRef<GainNode | null>(null)
+  const alertAudioFilePathRef = useRef('')
+  const alertAudioUrlRef = useRef('')
   const alertAudioSetupSeqRef = useRef(0)
+  const alertToneTimeoutsRef = useRef<number[]>([])
+  const alertToneOscillatorsRef = useRef<OscillatorNode[]>([])
+  const waveformHistoryRef = useRef<number[]>(createEmptyWaveformHistory())
+  const waveformFrameCountRef = useRef(0)
 
   const copy = useMemo(() => t(settings.language), [settings.language])
   const bandOptions = [
@@ -65,6 +86,12 @@ function App() {
     setLogs((prev) => [log, ...prev].slice(0, maxLogs))
   }, [])
 
+  const resetWaveformHistory = useCallback(() => {
+    waveformHistoryRef.current = createEmptyWaveformHistory()
+    waveformFrameCountRef.current = 0
+    setWaveformVersion((version) => version + 1)
+  }, [])
+
   useEffect(() => {
     settingsRef.current = settings
   }, [settings])
@@ -73,17 +100,35 @@ function App() {
     statsRef.current = stats
   }, [stats])
 
-  async function clearAlertAudio() {
+  const stopDefaultAlertTone = useCallback(() => {
+    alertToneTimeoutsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId))
+    alertToneTimeoutsRef.current = []
+
+    alertToneOscillatorsRef.current.forEach((oscillator) => {
+      try {
+        oscillator.stop()
+      } catch {
+        // Ignore already stopped oscillators.
+      }
+      oscillator.disconnect()
+    })
+    alertToneOscillatorsRef.current = []
+  }, [])
+
+  const clearAlertAudio = useCallback(async () => {
     pendingAlertSetupRef.current = null
+    stopDefaultAlertTone()
     const audio = alertAudioRef.current
     const source = alertAudioSourceRef.current
     const gain = alertAudioGainRef.current
     const context = alertAudioContextRef.current
 
     alertAudioRef.current = null
+    alertAudioContextRef.current = null
     alertAudioSourceRef.current = null
     alertAudioGainRef.current = null
-    alertAudioContextRef.current = null
+    alertAudioFilePathRef.current = ''
+    alertAudioUrlRef.current = ''
 
     audio?.pause()
     if (audio) {
@@ -96,18 +141,34 @@ function App() {
     if (context && context.state !== 'closed') {
       await context.close()
     }
+  }, [stopDefaultAlertTone])
+
+  function clearAlertAudioSelection() {
+    setSettings((prev) => {
+      if (!prev.alertAudioName && !prev.alertAudioPath) return prev
+      return {
+        ...prev,
+        alertAudioName: '',
+        alertAudioPath: '',
+      }
+    })
   }
 
-  async function ensureAlertAudioReady(filePath: string) {
-    const currentPath = alertAudioRef.current?.dataset.filePath
-    if (currentPath === filePath && alertAudioContextRef.current && alertAudioGainRef.current) {
+  async function invalidateAlertAudio() {
+    await clearAlertAudio()
+    clearAlertAudioSelection()
+  }
+
+  async function ensureAlertAudioReady(selection: AlertAudioSelection) {
+    const currentPath = alertAudioFilePathRef.current
+    if (currentPath === selection.filePath && alertAudioContextRef.current && alertAudioGainRef.current) {
       return
     }
 
     if (pendingAlertSetupRef.current) {
       await pendingAlertSetupRef.current
-      const readyPath = alertAudioRef.current?.dataset.filePath
-      if (readyPath === filePath && alertAudioContextRef.current && alertAudioGainRef.current) {
+      const readyPath = alertAudioFilePathRef.current
+      if (readyPath === selection.filePath && alertAudioContextRef.current && alertAudioGainRef.current) {
         return
       }
     }
@@ -119,10 +180,9 @@ function App() {
         return
       }
 
-      const audio = new Audio(toFileUrl(filePath))
+      const audio = new Audio(selection.audioUrl)
       audio.preload = 'auto'
       audio.volume = 1
-      audio.dataset.filePath = filePath
 
       let context: AudioContext | null = null
       let source: MediaElementAudioSourceNode | null = null
@@ -135,6 +195,42 @@ function App() {
         gain.gain.value = alertGainFromPercent(settingsRef.current.alertVolumePercent)
         source.connect(gain)
         gain.connect(context.destination)
+
+        await new Promise<void>((resolve, reject) => {
+          let settled = false
+          const cleanup = () => {
+            window.clearTimeout(timeoutId)
+            audio.removeEventListener('loadedmetadata', handleReady)
+            audio.removeEventListener('canplaythrough', handleReady)
+            audio.removeEventListener('error', handleError)
+          }
+          const finish = (callback: () => void) => {
+            if (settled) return
+            settled = true
+            cleanup()
+            callback()
+          }
+          const handleReady = () => {
+            finish(resolve)
+          }
+          const handleError = () => {
+            finish(() => reject(new Error('Failed to load alert audio.')))
+          }
+          const timeoutId = window.setTimeout(() => {
+            finish(() => reject(new Error('Timed out while loading alert audio.')))
+          }, alertAudioLoadTimeoutMs)
+
+          audio.addEventListener('loadedmetadata', handleReady, { once: true })
+          audio.addEventListener('canplaythrough', handleReady, { once: true })
+          audio.addEventListener('error', handleError, { once: true })
+
+          if (audio.readyState >= HTMLMediaElement.HAVE_METADATA) {
+            handleReady()
+            return
+          }
+
+          audio.load()
+        })
 
         if (setupSeq !== alertAudioSetupSeqRef.current) {
           audio.pause()
@@ -150,6 +246,8 @@ function App() {
         alertAudioContextRef.current = context
         alertAudioSourceRef.current = source
         alertAudioGainRef.current = gain
+        alertAudioFilePathRef.current = selection.filePath
+        alertAudioUrlRef.current = selection.audioUrl
       } catch (error) {
         audio.pause()
         audio.removeAttribute('src')
@@ -174,11 +272,63 @@ function App() {
     }
   }
 
+  async function playDefaultAlertTone() {
+    let context = alertAudioContextRef.current
+    let gain = alertAudioGainRef.current
+
+    if (!context || !gain) {
+      context = new AudioContext()
+      gain = context.createGain()
+      gain.gain.value = alertGainFromPercent(settingsRef.current.alertVolumePercent)
+      gain.connect(context.destination)
+      alertAudioContextRef.current = context
+      alertAudioGainRef.current = gain
+    }
+
+    stopDefaultAlertTone()
+
+    if (context.state === 'suspended') {
+      await context.resume()
+    }
+
+    defaultAlertToneSequence.forEach((frequency, index) => {
+      const timeoutId = window.setTimeout(() => {
+        const liveContext = alertAudioContextRef.current
+        const liveGain = alertAudioGainRef.current
+        if (!liveContext || !liveGain || liveContext.state === 'closed') {
+          return
+        }
+
+        const oscillator = liveContext.createOscillator()
+        oscillator.type = 'sine'
+        oscillator.frequency.value = frequency
+        oscillator.connect(liveGain)
+        alertToneOscillatorsRef.current.push(oscillator)
+        oscillator.onended = () => {
+          alertToneOscillatorsRef.current = alertToneOscillatorsRef.current.filter((item) => item !== oscillator)
+          oscillator.disconnect()
+        }
+        oscillator.start()
+        oscillator.stop(liveContext.currentTime + 0.12)
+      }, index * defaultAlertToneStepMs)
+
+      alertToneTimeoutsRef.current.push(timeoutId)
+    })
+  }
+
   async function playAlertAudio() {
     const { alertAudioPath } = settingsRef.current
-    if (!alertAudioPath) return
+    const currentAudioUrl = alertAudioUrlRef.current
+    if (!alertAudioPath || !currentAudioUrl) {
+      await playDefaultAlertTone()
+      return
+    }
 
-    await ensureAlertAudioReady(alertAudioPath)
+    await ensureAlertAudioReady({
+      filePath: alertAudioPath,
+      fileName: settingsRef.current.alertAudioName,
+      audioUrl: currentAudioUrl,
+    })
 
     const audio = alertAudioRef.current
     const context = alertAudioContextRef.current
@@ -191,6 +341,15 @@ function App() {
     audio.pause()
     audio.currentTime = 0
     await audio.play()
+  }
+
+  function stopCurrentAlertPlayback() {
+    const audio = alertAudioRef.current
+    if (audio) {
+      audio.pause()
+      audio.currentTime = 0
+    }
+    stopDefaultAlertTone()
   }
 
   async function refreshDevices() {
@@ -271,10 +430,11 @@ function App() {
       alertAudioSetupSeqRef.current += 1
       void clearAlertAudio()
     }
-  }, [])
+  }, [clearAlertAudio])
 
-  function stopMonitoring() {
+  const stopMonitoring = useCallback(() => {
     setIsMonitoring(false)
+    resetWaveformHistory()
 
     if (frameRef.current !== null) {
       cancelAnimationFrame(frameRef.current)
@@ -304,13 +464,13 @@ function App() {
     impactTimesRef.current = []
     lastAboveThresholdRef.current = false
     startTimeRef.current = null
-  }
+  }, [resetWaveformHistory])
 
   useEffect(() => {
     return () => {
       stopMonitoring()
     }
-  }, [])
+  }, [stopMonitoring])
 
   async function handleChooseAudio() {
     const picked = await window.desktopAPI?.chooseAlertAudio?.()
@@ -319,17 +479,17 @@ function App() {
     alertAudioSetupSeqRef.current += 1
     await clearAlertAudio()
 
-    setSettings((prev) => ({
-      ...prev,
-      alertAudioName: picked.fileName,
-      alertAudioPath: picked.filePath,
-    }))
-
     try {
-      await ensureAlertAudioReady(picked.filePath)
+      await ensureAlertAudioReady(picked)
+      setSettings((prev) => ({
+        ...prev,
+        alertAudioName: picked.fileName,
+        alertAudioPath: picked.filePath,
+      }))
     } catch (error) {
       const currentSettings = settingsRef.current
       const currentStats = statsRef.current
+      await invalidateAlertAudio()
       pushLog(
         createLogEvent({
           band: currentSettings.frequencyBand,
@@ -392,8 +552,12 @@ function App() {
         analyserNode.getFloatFrequencyData(frequencyData)
         const levels = calculateBandLevels(frequencyData, context.sampleRate, analyserNode.fftSize)
         const selectedDb = selectedBandDb(currentSettings.frequencyBand, levels)
+        const selectedPercent = bandToPercent(selectedDb)
         const now = performance.now()
         const windowMs = currentSettings.timeWindowSeconds * 1000
+
+        waveformHistoryRef.current = [...waveformHistoryRef.current.slice(-(waveformHistoryLength - 1)), selectedPercent]
+        waveformFrameCountRef.current += 1
 
         impactTimesRef.current = impactTimesRef.current.filter((ts) => now - ts <= windowMs)
 
@@ -423,7 +587,8 @@ function App() {
             if (triggered) {
               cooldownUntilRef.current = now + currentSettings.cooldownSeconds * 1000
               impactTimesRef.current = []
-              void playAlertAudio().catch(() => {
+              void playAlertAudio().catch(async () => {
+                await invalidateAlertAudio()
                 pushLog(
                   createLogEvent({
                     band: currentSettings.frequencyBand,
@@ -463,6 +628,11 @@ function App() {
           statusTextEn: 'Listening',
         }))
 
+        if (waveformFrameCountRef.current >= waveformUpdateInterval) {
+          waveformFrameCountRef.current = 0
+          setWaveformVersion((version) => version + 1)
+        }
+
         frameRef.current = requestAnimationFrame(tick)
       }
 
@@ -485,14 +655,13 @@ function App() {
     }
   }
 
+  useEffect(() => {
+    resetWaveformHistory()
+  }, [resetWaveformHistory, settings.frequencyBand])
+
   const lowPercent = bandToPercent(stats.lowBandDb)
   const midPercent = bandToPercent(stats.midBandDb)
   const highPercent = bandToPercent(stats.highBandDb)
-  const waveformBars = Array.from({ length: 32 }, (_, index) => {
-    const base = settings.frequencyBand === 'low' ? lowPercent : settings.frequencyBand === 'mid' ? midPercent : highPercent
-    const variance = ((index % 5) - 2) * 4
-    return Math.max(8, Math.min(100, base + variance))
-  })
 
   return (
     <div className="appShell">
@@ -545,15 +714,26 @@ function App() {
             </button>
           </div>
           <div className="audioSettings">
-            <SliderRow
-              label={copy.alertVolume}
-              min={0}
-              max={2000}
-              step={10}
-              value={settings.alertVolumePercent}
-              onChange={(value) => setSettings((prev) => ({ ...prev, alertVolumePercent: value }))}
-              rightText={`${settings.alertVolumePercent}%`}
-            />
+            <div className="audioControls">
+              <div className="audioSliderWrap">
+                <SliderRow
+                  label={copy.alertVolume}
+                  min={0}
+                  max={2000}
+                  step={10}
+                  value={settings.alertVolumePercent}
+                  onChange={(value) => setSettings((prev) => ({ ...prev, alertVolumePercent: value }))}
+                  rightText={`${settings.alertVolumePercent}%`}
+                />
+              </div>
+              <button
+                className="secondaryButton audioStopButton"
+                type="button"
+                onClick={stopCurrentAlertPlayback}
+              >
+                {copy.stopAlert}
+              </button>
+            </div>
           </div>
           <div className="pathHints">
             <span>JSON: {lastJsonPath || '-'}</span>
@@ -659,7 +839,7 @@ function App() {
         <SectionCard title={copy.charts}>
           <div className="chartPanel">
             <div className="chartPlaceholder waveformBars">
-              {waveformBars.map((height, index) => (
+              {waveformHistoryRef.current.map((height, index) => (
                 <div key={index} className="waveBar" style={{ height: `${height}%` }} />
               ))}
             </div>

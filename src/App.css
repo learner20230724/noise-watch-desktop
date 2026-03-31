@@ -261,20 +261,19 @@
 }
 
 .waveformBars {
+  display: flex;
   min-height: 140px;
   align-items: flex-end;
+  justify-content: space-between;
   padding: 14px;
-  gap: 6px;
+  gap: 3px;
 }
 
 .waveBar {
-  width: 6px;
+  flex: 1 1 0;
+  min-width: 0;
   border-radius: 999px;
   background: rgba(34, 197, 94, 0.45);
-}
-
-.waveformBars {
-  display: flex;
 }
 
 .energyBars {
@@ -334,6 +333,20 @@
   margin-top: 14px;
 }
 
+.audioControls {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.audioSliderWrap {
+  flex: 1 1 auto;
+}
+
+.audioStopButton {
+  white-space: nowrap;
+}
+
 .pathHints {
   margin-top: 12px;
   font-size: 11px;
@@ -373,6 +386,11 @@
   .devicePanel,
   .audioPanel {
     grid-template-columns: 1fr;
+  }
+
+  .audioControls {
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .statusGrid {

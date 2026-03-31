@@ -5,13 +5,13 @@
 ### Noise Watch Desktop
 
 一个面向 **Windows / macOS** 的本地监听提醒桌面应用。
-聚焦 **设备选择、频段监听、阈值判定、本机提醒、JSON 实时写入、CSV 周期导出**。
+当前 `v1.0.0` 聚焦 **设备选择、频段监听、阈值判定、本机提醒、内置默认提示音、提醒音停止控制、JSON 实时写入、CSV 周期导出**。
 
-[![Release](https://img.shields.io/github/v/release/learner20230724/noise-watch-desktop?style=for-the-badge)](https://github.com/learner20230724/noise-watch-desktop/releases/tag/v0.0.0)
-[![Platforms](https://img.shields.io/badge/platform-Windows%20%7C%20macOS-4c8eda?style=for-the-badge)](https://github.com/learner20230724/noise-watch-desktop/releases/tag/v0.0.0)
+[![Release](https://img.shields.io/github/v/release/learner20230724/noise-watch-desktop?style=for-the-badge)](https://github.com/learner20230724/noise-watch-desktop/releases/tag/v1.0.0)
+[![Platforms](https://img.shields.io/badge/platform-Windows%20%7C%20macOS-4c8eda?style=for-the-badge)](https://github.com/learner20230724/noise-watch-desktop/releases/tag/v1.0.0)
 [![License](https://img.shields.io/github/license/learner20230724/noise-watch-desktop?style=for-the-badge)](./LICENSE)
 
-[下载 Windows 版](https://github.com/learner20230724/noise-watch-desktop/releases/download/v0.0.0/Setup.0.0.0.exe) · [下载 macOS arm64 版](https://github.com/learner20230724/noise-watch-desktop/releases/download/v0.0.0/-0.0.0-arm64.dmg) · [查看 Releases](https://github.com/learner20230724/noise-watch-desktop/releases/tag/v0.0.0)
+[下载 Windows 版](https://github.com/learner20230724/noise-watch-desktop/releases/download/v1.0.0/%E6%AD%A3%E5%8F%8D%E9%A6%88%E6%A5%BC%E4%B8%8A%E6%A5%BC%E4%B8%8B%E5%A5%BD%E9%82%BB%E5%B1%85%20Setup%201.0.0.exe) · macOS 安装包稍后补充 · [查看 Releases](https://github.com/learner20230724/noise-watch-desktop/releases/tag/v1.0.0)
 
 </div>
 
@@ -30,7 +30,8 @@
 
 来判断是否发生了目标事件。触发后，应用会：
 
-- 在**本机**播放你选择的提醒音
+- 在**本机**播放你选择的提醒音，或在未选择文件时播放内置默认提示音
+- 支持在界面中一键停止当前提醒音播放
 - 实时覆盖写入一份 JSON 快照
 - 每 5 分钟覆盖导出一份 CSV 文件
 
@@ -44,14 +45,19 @@
 
 | 平台 | 类型 | 状态 | 下载 |
 | --- | --- | --- | --- |
-| Windows x64 | NSIS 安装包 | 已可直接下载安装 | [Setup.0.0.0.exe](https://github.com/learner20230724/noise-watch-desktop/releases/download/v0.0.0/Setup.0.0.0.exe) |
-| macOS arm64 | DMG 安装包 | 初始可安装版本 | [-0.0.0-arm64.dmg](https://github.com/learner20230724/noise-watch-desktop/releases/download/v0.0.0/-0.0.0-arm64.dmg) |
+| Windows x64 | NSIS 安装包 | `v1.0.0` 已可直接下载安装 | [正反馈楼上楼下好邻居 Setup 1.0.0.exe](https://github.com/learner20230724/noise-watch-desktop/releases/download/v1.0.0/%E6%AD%A3%E5%8F%8D%E9%A6%88%E6%A5%BC%E4%B8%8A%E6%A5%BC%E4%B8%8B%E5%A5%BD%E9%82%BB%E5%B1%85%20Setup%201.0.0.exe) |
+| macOS arm64 | DMG 安装包 | 本次 Release 暂未附带，稍后补充 | — |
 
 ### 当前发布说明
 
-- **macOS arm64**：初始可安装版本。包含桌面界面、设备选择、频段选择、阈值判定、本机提醒、JSON 实时写入和每 5 分钟 CSV 导出。
-- **Windows x64**：已提供可直接下载安装版本，核心桌面能力与当前主线一致。
-- 完整发布页：<https://github.com/learner20230724/noise-watch-desktop/releases/tag/v0.0.0>
+- **v1.0.0**：首个稳定 Windows 发布版本。
+- 新增提醒音**停止按钮**，歌曲类提醒音触发后可随时手动停止。
+- 未选择自定义提醒音时，会自动使用内置默认提示音，避免没有声音反馈。
+- 提醒音文件选择与播放稳定性已提升，坏文件不会反复重试。
+- 实时监测左侧图表已改为真实历史滚动时间流效果。
+- **Windows x64**：本次 Release 已附带安装包。
+- **macOS arm64**：安装包稍后补充。
+- 完整发布页：<https://github.com/learner20230724/noise-watch-desktop/releases/tag/v1.0.0>
 
 ---
 
@@ -63,11 +69,12 @@
 | 输入设备选择与刷新 | 已支持 | 选择麦克风输入设备并刷新列表 |
 | 频段选择 | 已支持 | 低频 / 中频 / 高频 |
 | 阈值判定 | 已支持 | 支持阈值、次数、时间窗口、冷却时间组合规则 |
-| 本机提醒 | 已支持 | 触发后播放你自己选择的本地音频 |
+| 本机提醒 | 已支持 | 触发后播放自定义本地音频，未选择时回退到内置提示音 |
+| 提醒音停止控制 | 已支持 | 可在提醒音区域一键停止当前播放 |
 | JSON 实时写入 | 已支持 | 持续覆盖写入最新事件快照 |
 | CSV 周期导出 | 已支持 | 每 5 分钟自动覆盖导出 |
 | 双语界面 | 已支持 | 中文 / English |
-| 打包平台 | 已支持 | Windows / macOS |
+| 打包平台 | 已支持 | Windows，macOS 安装包稍后补充 |
 
 ---
 
@@ -122,6 +129,8 @@
 ### 6. 设置提醒音
 
 触发后会在**本机**播放你选择的本地音频文件。
+如果你暂时没有选择文件，应用会自动播放一个内置默认提示音。
+播放较长歌曲时，也可以在提醒音区域直接点击“停止提醒音”。
 
 ### 7. 查看本地记录
 

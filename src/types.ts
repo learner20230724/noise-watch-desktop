@@ -63,7 +63,7 @@ declare global {
   interface Window {
     desktopAPI?: {
       getPaths: () => Promise<AppPaths>
-      chooseAlertAudio: () => Promise<{ filePath: string; fileName: string } | null>
+      chooseAlertAudio: () => Promise<{ filePath: string; fileName: string; audioUrl: string } | null>
       writeSnapshot: (snapshot: PersistenceSnapshot) => Promise<{ filePath: string }>
       exportCsv: (snapshot: PersistenceSnapshot) => Promise<{ filePath: string }>
     }

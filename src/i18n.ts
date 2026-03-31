@@ -14,6 +14,7 @@ export const copy = {
     alertAudio: '提醒音频',
     chooseFile: '选择文件',
     alertVolume: '提醒音量',
+    stopAlert: '停止提醒音',
     params: '参数调节',
     threshold: '阈值',
     triggerCount: '确认次数',
@@ -35,7 +36,7 @@ export const copy = {
     impactCount: '冲击累计',
     totalTriggers: '触发次数',
     elapsed: '运行时长',
-    noAlert: '未选择提醒音频',
+    noAlert: '未选择提醒音频（将使用内置提示音）',
   },
   en: {
     appTitle: 'Good Neighbor Monitor',
@@ -50,6 +51,7 @@ export const copy = {
     alertAudio: 'Alert audio',
     chooseFile: 'Choose file',
     alertVolume: 'Alert volume',
+    stopAlert: 'Stop alert',
     params: 'Parameters',
     threshold: 'Threshold',
     triggerCount: 'Trigger count',
@@ -71,7 +73,7 @@ export const copy = {
     impactCount: 'Impact count',
     totalTriggers: 'Triggers',
     elapsed: 'Elapsed',
-    noAlert: 'No alert audio selected',
+    noAlert: 'No alert audio selected (built-in tone will be used)',
   },
 } as const
 

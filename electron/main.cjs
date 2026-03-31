@@ -4,6 +4,13 @@ const fs = require('node:fs')
 
 const isDev = !app.isPackaged
 const appTitle = '正反馈楼上楼下好邻居 / Good Neighbor Monitor'
+const audioMimeTypes = {
+  mp3: 'audio/mpeg',
+  wav: 'audio/wav',
+  m4a: 'audio/mp4',
+  aac: 'audio/aac',
+  ogg: 'audio/ogg',
+}
 
 function ensureDir(dirPath) {
   if (!fs.existsSync(dirPath)) {
@@ -53,6 +60,13 @@ function writeCsv(filePath, logs) {
   )
 
   fs.writeFileSync(filePath, [header.join(','), ...rows].join('\n'), 'utf8')
+}
+
+function audioFileToDataUrl(filePath) {
+  const ext = path.extname(filePath).slice(1).toLowerCase()
+  const mimeType = audioMimeTypes[ext] || 'application/octet-stream'
+  const fileBuffer = fs.readFileSync(filePath)
+  return `data:${mimeType};base64,${fileBuffer.toString('base64')}`
 }
 
 function createWindow() {
@@ -115,6 +129,7 @@ app.whenReady().then(() => {
     return {
       filePath,
       fileName: path.basename(filePath),
+      audioUrl: audioFileToDataUrl(filePath),
     }
   })
 
