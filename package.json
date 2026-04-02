@@ -2,6 +2,8 @@
   "name": "noise-watch-desktop",
   "private": true,
   "version": "1.0.0",
+  "description": "噪音监测应用",
+  "author": "learner20230724",
   "type": "module",
   "main": "electron/main.cjs",
   "scripts": {
@@ -54,6 +56,10 @@
     "win": {
       "target": "nsis",
       "executableName": "noise-watch-desktop"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
     }
   }
 }

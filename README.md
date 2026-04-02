@@ -5,13 +5,13 @@
 ### Noise Watch Desktop
 
 一个面向 **Windows / macOS** 的本地监听提醒桌面应用。
-当前 `v1.0.1` 聚焦 **设备选择、频段监听、阈值判定、本机提醒、内置默认提示音、提醒音停止控制、JSON 实时写入、CSV 周期导出、macOS ARM64 支持**。
+当前 `v1.0.0` 聚焦 **设备选择、频段监听、阈值判定、本机提醒、内置默认提示音、提醒音停止控制、JSON 实时写入、CSV 周期导出**。
 
 [![Release](https://img.shields.io/github/v/release/learner20230724/noise-watch-desktop?style=for-the-badge)](https://github.com/learner20230724/noise-watch-desktop/releases)
 [![Platforms](https://img.shields.io/badge/platform-Windows%20%7C%20macOS-4c8eda?style=for-the-badge)](https://github.com/learner20230724/noise-watch-desktop/releases)
 [![License](https://img.shields.io/github/license/learner20230724/noise-watch-desktop?style=for-the-badge)](./LICENSE)
 
-[下载 Windows 版](https://github.com/learner20230724/noise-watch-desktop/releases/download/v1.0.0/noise-watch-desktop-Setup-1.0.0.exe) · [下载 macOS ARM64 版](https://github.com/learner20230724/noise-watch-desktop/releases/download/v1.0.1/NoiseWatch-1.0.1-arm64.dmg) · [查看 Releases](https://github.com/learner20230724/noise-watch-desktop/releases)
+[下载 Windows 版](https://github.com/learner20230724/noise-watch-desktop/releases/download/v1.0.0/noise-watch-desktop-Setup-1.0.0.exe) · [Windows 10 测试版（修复启动问题）](https://github.com/learner20230724/noise-watch-desktop/releases/download/v1.0.2-win10-test/noise-watch-desktop-Setup-1.0.0-Win10-test.exe) · [macOS](https://github.com/learner20230724/noise-watch-desktop/releases/tag/v1.0.1) · [查看 Releases](https://github.com/learner20230724/noise-watch-desktop/releases)
 
 </div>
 
@@ -45,20 +45,13 @@
 
 | 平台 | 类型 | 状态 | 下载 |
 | --- | --- | --- | --- |
-| Windows x64 | NSIS 安装包 | `v1.0.0` 已可直接下载安装 | [noise-watch-desktop-Setup-1.0.0.exe](https://github.com/learner20230724/noise-watch-desktop/releases/download/v1.0.0/noise-watch-desktop-Setup-1.0.0.exe) |
-| macOS arm64 | DMG 安装包 | `v1.0.1` 已可直接下载安装 | [NoiseWatch-1.0.1-arm64.dmg](https://github.com/learner20230724/noise-watch-desktop/releases/download/v1.0.1/NoiseWatch-1.0.1-arm64.dmg) |
+| Windows x64 | NSIS 安装包 | `v1.0.0` 稳定版 | [noise-watch-desktop-Setup-1.0.0.exe](https://github.com/learner20230724/noise-watch-desktop/releases/download/v1.0.0/noise-watch-desktop-Setup-1.0.0.exe) |
+| Windows x64 | NSIS 安装包 | `v1.0.2` Win10 测试版（修复 Win10 静默启动问题） | [noise-watch-desktop-Setup-1.0.0-Win10-test.exe](https://github.com/learner20230724/noise-watch-desktop/releases/download/v1.0.2-win10-test/noise-watch-desktop-Setup-1.0.0-Win10-test.exe) |
+| macOS arm64 | DMG 安装包 | `v1.0.1` | [NoiseWatch-1.0.1-arm64.dmg](https://github.com/learner20230724/noise-watch-desktop/releases/download/v1.0.1/NoiseWatch-1.0.1-arm64.dmg) |
 
-### 当前发布说明
+### 系统要求
 
-- **v1.0.1**：新增 macOS ARM64 支持，开发服务器默认端口改为 5174。
-- **v1.0.0**：首个稳定 Windows/macOS 发布版本。
-- 新增提醒音**停止按钮**，歌曲类提醒音触发后可随时手动停止。
-- 未选择自定义提醒音时，会自动使用内置默认提示音，避免没有声音反馈。
-- 提醒音文件选择与播放稳定性已提升，坏文件不会反复重试。
-- 实时监测左侧图表已改为真实历史滚动时间流效果。
-- **Windows x64**：使用 v1.0.0 安装包。
-- **macOS arm64**：使用 v1.0.1 DMG 安装包。
-- 完整发布页：<https://github.com/learner20230724/noise-watch-desktop/releases>
+**Windows**：Windows 10/11 x64，安装时需要管理员权限。如安装后双击无反应，请确保已安装 [Visual C++ Redistributable 2015-2022 (x64)](https://aka.ms/vs/17/release/vc_redist.x64.exe)。安装时如遇 SmartScreen 拦截，请点击"仍要运行"。
 
 ---
 
@@ -83,11 +76,11 @@
 
 ### 界面上半部分
 
-![界面上半部分](./docs/上半部分.png)
+![界面上半部分](./docs/top.png)
 
 ### 界面下半部分
 
-![界面下半部分](./docs/下半部分.png)
+![界面下半部分](./docs/bottom.png)
 
 ---
 
