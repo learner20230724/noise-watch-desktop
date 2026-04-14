@@ -42,10 +42,11 @@
     "appId": "com.learner.noisewatch",
     "productName": "正反馈楼上楼下好邻居",
     "files": [
-      "dist/renderer/**/*",
+      "renderer/**/*",
       "electron/**/*",
       "package.json"
     ],
+    "electronDist": "node_modules/electron/dist",
     "directories": {
       "buildResources": "build",
       "output": "release"

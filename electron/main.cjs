@@ -91,7 +91,7 @@ function createWindow() {
     return
   }
 
-  window.loadFile(path.join(__dirname, '../dist/renderer/index.html'))
+  window.loadFile(path.join(__dirname, '../renderer/index.html'))
 }
 
 app.whenReady().then(() => {
