@@ -30,7 +30,7 @@ export function defaultSettings(): MonitoringSettings {
     alertAudioPath: '',
     alertVolumePercent: 100,
     language: 'zh',
-    frequencyBand: 'low',
+    frequencyBands: ['low'],
     threshold: -35,
     triggerCount: 3,
     timeWindowSeconds: 4,
@@ -75,7 +75,7 @@ export async function listAudioInputDevices(): Promise<DeviceOption[]> {
 }
 
 export function createLogEvent(params: {
-  band: FrequencyBand
+  band: string
   peakDb: number
   selectedBandDb: number
   threshold: number
@@ -122,12 +122,10 @@ export function calculateBandLevels(
 }
 
 export function selectedBandDb(
-  band: FrequencyBand,
+  bands: FrequencyBand[],
   levels: { low: number; mid: number; high: number },
 ) {
-  if (band === 'low') return levels.low
-  if (band === 'mid') return levels.mid
-  return levels.high
+  return bands.reduce((max, band) => Math.max(max, levels[band]), -120)
 }
 
 export function bandToPercent(db: number) {

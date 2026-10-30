@@ -5,13 +5,12 @@ import {
   calculateBandLevels,
   createInitialStats,
   createLogEvent,
-  defaultSettings,
   formatElapsed,
   listAudioInputDevices,
   selectedBandDb,
   alertGainFromPercent,
 } from './appLogic'
-import { createSnapshot, exportCsv, writeSnapshot } from './persistence'
+import { createSnapshot, exportCsv, loadSettings, saveSettings, writeSnapshot } from './persistence'
 import { bandRangeText, t } from './i18n'
 import { RadioPill } from './components/RadioPill'
 import { SectionCard } from './components/SectionCard'
@@ -42,7 +41,7 @@ type AlertAudioSelection = {
 }
 
 function App() {
-  const [settings, setSettings] = useState<MonitoringSettings>(defaultSettings)
+  const [settings, setSettings] = useState<MonitoringSettings>(loadSettings)
   const [devices, setDevices] = useState<DeviceOption[]>(fallbackDevices)
   const [stats, setStats] = useState<MonitoringStats>(() => createInitialStats('zh'))
   const [logs, setLogs] = useState<EventLog[]>([])
@@ -94,6 +93,7 @@ function App() {
 
   useEffect(() => {
     settingsRef.current = settings
+    saveSettings(settings)
   }, [settings])
 
   useEffect(() => {
@@ -492,7 +492,7 @@ function App() {
       await invalidateAlertAudio()
       pushLog(
         createLogEvent({
-          band: currentSettings.frequencyBand,
+          band: currentSettings.frequencyBands.join('+'),
           peakDb: currentStats.peakDb,
           selectedBandDb: currentStats.selectedBandDb,
           threshold: currentSettings.threshold,
@@ -551,7 +551,7 @@ function App() {
 
         analyserNode.getFloatFrequencyData(frequencyData)
         const levels = calculateBandLevels(frequencyData, context.sampleRate, analyserNode.fftSize)
-        const selectedDb = selectedBandDb(currentSettings.frequencyBand, levels)
+        const selectedDb = selectedBandDb(currentSettings.frequencyBands, levels)
         const selectedPercent = bandToPercent(selectedDb)
         const now = performance.now()
         const windowMs = currentSettings.timeWindowSeconds * 1000
@@ -568,7 +568,7 @@ function App() {
             const triggered = impactCount >= currentSettings.triggerCount && now >= cooldownUntilRef.current
 
             const log = createLogEvent({
-              band: currentSettings.frequencyBand,
+              band: currentSettings.frequencyBands.join('+'),
               peakDb: levels.peak,
               selectedBandDb: selectedDb,
               threshold: currentSettings.threshold,
@@ -576,10 +576,10 @@ function App() {
               triggered,
               messageZh: triggered
                 ? '达到阈值，已触发本机提醒。'
-                : `检测到一次超过阈值的${currentSettings.frequencyBand}频事件。`,
+                : `检测到一次超过阈值的${currentSettings.frequencyBands.join('+')}频事件。`,
               messageEn: triggered
                 ? 'Threshold met. Local alert played.'
-                : `Detected one ${currentSettings.frequencyBand}-band event above threshold.`,
+                : `Detected one ${currentSettings.frequencyBands.join('+')}-band event above threshold.`,
             })
 
             pushLog(log)
@@ -591,7 +591,7 @@ function App() {
                 await invalidateAlertAudio()
                 pushLog(
                   createLogEvent({
-                    band: currentSettings.frequencyBand,
+                    band: currentSettings.frequencyBands.join('+'),
                     peakDb: levels.peak,
                     selectedBandDb: selectedDb,
                     threshold: currentSettings.threshold,
@@ -641,7 +641,7 @@ function App() {
       setIsMonitoring(false)
       pushLog(
         createLogEvent({
-          band: settingsRef.current.frequencyBand,
+          band: settingsRef.current.frequencyBands.join('+'),
           peakDb: -120,
           selectedBandDb: -120,
           threshold: settingsRef.current.threshold,
@@ -657,7 +657,7 @@ function App() {
 
   useEffect(() => {
     resetWaveformHistory()
-  }, [resetWaveformHistory, settings.frequencyBand])
+  }, [resetWaveformHistory, settings.frequencyBands])
 
   const lowPercent = bandToPercent(stats.lowBandDb)
   const midPercent = bandToPercent(stats.midBandDb)
@@ -747,15 +747,17 @@ function App() {
               <RadioPill
                 key={option.value}
                 label={option.label}
-                optionValue={option.value}
-                selectedValue={settings.frequencyBand}
-                onChange={(value) =>
-                  setSettings((prev) => ({
-                    ...prev,
-                    frequencyBand: value as FrequencyBand,
-                  }))
+                checked={settings.frequencyBands.includes(option.value as FrequencyBand)}
+                onChange={(checked) =>
+                  setSettings((prev) => {
+                    const band = option.value as FrequencyBand
+                    const bands = checked
+                      ? [...prev.frequencyBands, band]
+                      : prev.frequencyBands.filter((item) => item !== band)
+                    // Keep at least one band selected.
+                    return bands.length > 0 ? { ...prev, frequencyBands: bands } : prev
+                  })
                 }
-                name="band"
               />
             ))}
           </div>

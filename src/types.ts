@@ -12,7 +12,7 @@ export type MonitoringSettings = {
   alertAudioPath: string
   alertVolumePercent: number
   language: Language
-  frequencyBand: FrequencyBand
+  frequencyBands: FrequencyBand[]
   threshold: number
   triggerCount: number
   timeWindowSeconds: number
@@ -36,7 +36,7 @@ export type MonitoringStats = {
 export type EventLog = {
   id: string
   timestamp: string
-  band: FrequencyBand
+  band: string
   peakDb: number
   selectedBandDb: number
   threshold: number

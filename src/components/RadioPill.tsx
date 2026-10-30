@@ -1,20 +1,17 @@
 type Props = {
   label: string
-  optionValue: string
-  selectedValue: string
-  onChange: (v: string) => void
-  name: string
+  checked: boolean
+  onChange: (checked: boolean) => void
 }
 
-export function RadioPill({ label, optionValue, selectedValue, onChange, name }: Props) {
+export function RadioPill({ label, checked, onChange }: Props) {
   return (
     <label className="pill">
       <input
         className="pillInput"
-        type="radio"
-        name={name}
-        checked={selectedValue === optionValue}
-        onChange={() => onChange(optionValue)}
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
       />
       <span className="pillText">{label}</span>
     </label>

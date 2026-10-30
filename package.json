@@ -52,17 +52,48 @@
       "output": "release"
     },
     "mac": {
-      "target": "dmg"
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "category": "public.app-category.utilities",
+      "hardenedRuntime": true,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "需要使用麦克风监听环境噪音 / Microphone is used to monitor ambient noise."
+      }
     },
     "win": {
-      "target": "nsis",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
       "executableName": "noise-watch-desktop"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "include": "build/webview2-install.nsh"
-    }
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "正反馈楼上楼下好邻居",
+      "runAfterFinish": true
+    },
+    "artifactName": "noise-watch-desktop-Setup-${version}-${os}-${arch}.${ext}"
   }
 }
-

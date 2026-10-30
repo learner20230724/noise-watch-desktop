@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron')
+const { app, BrowserWindow, ipcMain, dialog, session, systemPreferences } = require('electron')
 const path = require('node:path')
 const fs = require('node:fs')
 
@@ -69,6 +69,62 @@ function audioFileToDataUrl(filePath) {
   return `data:${mimeType};base64,${fileBuffer.toString('base64')}`
 }
 
+// Write startup problems to a log file, so silent failures on user machines can be diagnosed.
+function logError(message) {
+  try {
+    const dir = app.getPath('userData')
+    ensureDir(dir)
+    fs.appendFileSync(path.join(dir, 'startup.log'), `[${new Date().toISOString()}] ${message}
+`, 'utf8')
+  } catch {
+    // Nothing else we can do if the log itself cannot be written.
+  }
+}
+
+process.on('uncaughtException', (error) => {
+  logError(`uncaughtException: ${error?.stack || error}`)
+  dialog.showErrorBox(appTitle, `程序出错 / Unexpected error:
+${error?.message || error}
+
+日志 / Log: ${path.join(app.getPath('userData'), 'startup.log')}`)
+})
+
+// Some older GPUs/drivers crash or show nothing with hardware acceleration; this UI doesn't need it.
+app.disableHardwareAcceleration()
+
+// A second launch (e.g. double-click while the first window is hidden) focuses the existing window.
+const hasSingleInstanceLock = app.requestSingleInstanceLock()
+if (!hasSingleInstanceLock) {
+  app.quit()
+} else {
+  app.on('second-instance', () => {
+    const [existing] = BrowserWindow.getAllWindows()
+    if (existing) {
+      if (existing.isMinimized()) existing.restore()
+      existing.show()
+      existing.focus()
+    }
+  })
+}
+
+async function requestMicrophoneAccess() {
+  if (process.platform !== 'darwin' && process.platform !== 'win32') return
+  const status = systemPreferences.getMediaAccessStatus('microphone')
+  if (status === 'granted') return
+  if (process.platform === 'darwin') {
+    // Triggers the macOS permission prompt so the app appears under System Settings > Microphone.
+    await systemPreferences.askForMediaAccess('microphone')
+  } else if (status === 'denied') {
+    logError('Windows microphone access is denied: Settings > Privacy & security > Microphone')
+    dialog.showMessageBox({
+      type: 'warning',
+      title: appTitle,
+      message: '麦克风被系统禁用 / Microphone access is blocked',
+      detail: '请打开 设置 > 隐私和安全性 > 麦克风，允许桌面应用访问麦克风。\nOpen Settings > Privacy & security > Microphone and allow desktop apps to use it.',
+    })
+  }
+}
+
 function createWindow() {
   const window = new BrowserWindow({
     width: 1440,
@@ -91,10 +147,26 @@ function createWindow() {
     return
   }
 
+  window.webContents.on('did-fail-load', (_, code, description) => {
+    logError(`did-fail-load ${code} ${description}`)
+    dialog.showErrorBox(appTitle, `界面加载失败 / Failed to load UI: ${description}`)
+  })
+  window.webContents.on('render-process-gone', (_, details) => {
+    logError(`render-process-gone ${details.reason}`)
+  })
+
   window.loadFile(path.join(__dirname, '../renderer/index.html'))
 }
 
 app.whenReady().then(() => {
+  if (!hasSingleInstanceLock) return
+
+  session.defaultSession.setPermissionRequestHandler((_, permission, callback) => {
+    callback(permission === 'media')
+  })
+  session.defaultSession.setPermissionCheckHandler((_, permission) => permission === 'media')
+  void requestMicrophoneAccess().catch((error) => logError(`microphone access: ${error}`))
+
   ipcMain.handle('app:get-paths', () => {
     const userDataPath = app.getPath('userData')
     const exportDir = path.join(userDataPath, 'exports')
