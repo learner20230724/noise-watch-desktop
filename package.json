@@ -1,7 +1,7 @@
 {
   "name": "noise-watch-desktop",
   "private": true,
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "噪音监测应用",
   "author": "learner20230724",
   "type": "module",
