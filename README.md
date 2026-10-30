@@ -5,7 +5,7 @@
 ### Noise Watch Desktop
 
 一个面向 **Windows / macOS** 的本地监听提醒桌面应用。
-当前 `v1.0.0` 聚焦 **设备选择、频段监听、阈值判定、本机提醒、内置默认提示音、提醒音停止控制、JSON 实时写入、CSV 周期导出**。
+当前 `v1.0.3` 聚焦 **设备选择、多频段监听、阈值判定、本机提醒、内置默认提示音、提醒音停止控制、JSON 实时写入、CSV 周期导出**。
 
 [![Release](https://img.shields.io/github/v/release/learner20230724/noise-watch-desktop?style=for-the-badge)](https://github.com/learner20230724/noise-watch-desktop/releases)
 [![Platforms](https://img.shields.io/badge/platform-Windows%20%7C%20macOS-4c8eda?style=for-the-badge)](https://github.com/learner20230724/noise-watch-desktop/releases)
