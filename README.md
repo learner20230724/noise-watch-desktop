@@ -11,7 +11,7 @@
 [![Platforms](https://img.shields.io/badge/platform-Windows%20%7C%20macOS-4c8eda?style=for-the-badge)](https://github.com/learner20230724/noise-watch-desktop/releases)
 [![License](https://img.shields.io/github/license/learner20230724/noise-watch-desktop?style=for-the-badge)](./LICENSE)
 
-[下载 Windows 版](https://github.com/learner20230724/noise-watch-desktop/releases/download/v1.0.3/noise-watch-desktop-Setup-1.0.3-win-x64.exe) · [免安装 zip](https://github.com/learner20230724/noise-watch-desktop/releases/download/v1.0.3/noise-watch-desktop-Setup-1.0.3-win-x64.zip) · [macOS](https://github.com/learner20230724/noise-watch-desktop/releases/tag/v1.0.3) · [查看 Releases](https://github.com/learner20230724/noise-watch-desktop/releases)
+[下载 Windows 版](https://github.com/learner20230724/noise-watch-desktop/releases/download/v1.0.3/noise-watch-desktop-Setup-1.0.3-win-x64.exe) · [免安装 zip](https://github.com/learner20230724/noise-watch-desktop/releases/download/v1.0.3/noise-watch-desktop-Setup-1.0.3-win-x64.zip) · [下载 macOS Apple 芯片版](https://github.com/learner20230724/noise-watch-desktop/releases/download/v1.0.3/noise-watch-desktop-Setup-1.0.3-mac-arm64.dmg) · [查看 Releases](https://github.com/learner20230724/noise-watch-desktop/releases)
 
 </div>
 
@@ -47,7 +47,7 @@
 | --- | --- | --- | --- |
 | Windows x64 | NSIS 安装包 | `v1.0.3` | [noise-watch-desktop-Setup-1.0.3-win-x64.exe](https://github.com/learner20230724/noise-watch-desktop/releases/download/v1.0.3/noise-watch-desktop-Setup-1.0.3-win-x64.exe) |
 | Windows x64 | 免安装 zip | `v1.0.3` | [noise-watch-desktop-Setup-1.0.3-win-x64.zip](https://github.com/learner20230724/noise-watch-desktop/releases/download/v1.0.3/noise-watch-desktop-Setup-1.0.3-win-x64.zip) |
-| macOS（Apple 芯片 / Intel） | DMG 安装包 | `v1.0.3` | [Releases](https://github.com/learner20230724/noise-watch-desktop/releases/tag/v1.0.3) |
+| macOS（Apple 芯片 / ARM64） | DMG 安装包 | `v1.0.3` | [noise-watch-desktop-Setup-1.0.3-mac-arm64.dmg](https://github.com/learner20230724/noise-watch-desktop/releases/download/v1.0.3/noise-watch-desktop-Setup-1.0.3-mac-arm64.dmg) |
 
 ### 系统要求
 
@@ -56,7 +56,9 @@
 **启动没反应？** 查看 `%APPDATA%
 oise-watch-desktop\startup.log`（或 `%APPDATA%\正反馈楼上楼下好邻居\startup.log`），把内容贴到 Issue 里。另请确认 设置 → 隐私和安全性 → 麦克风 已允许桌面应用访问。
 
-**macOS 没有麦克风权限？** 新版会在首次启动时主动弹出授权。旧版请在终端执行 `sudo xattr -cr "/Applications/正反馈楼上楼下好邻居.app"` 后重新打开；Intel Mac 请下载 `x64` 版 DMG。
+**macOS**：当前 DMG 适用于 macOS 12 及以上的 Apple 芯片 Mac（M 系列），不适用于 Intel Mac。打开 DMG 后，将应用拖入 Applications。该构建采用本地临时签名（ad-hoc），未经过 Apple 公证；首次打开如被拦截，请在“系统设置 → 隐私与安全性”中选择“仍要打开”。
+
+**macOS 没有麦克风权限？** 首次启动时请允许麦克风访问；也可以到“系统设置 → 隐私与安全性 → 麦克风”检查授权。
 
 ---
 
@@ -74,11 +76,13 @@ oise-watch-desktop\startup.log`（或 `%APPDATA%\正反馈楼上楼下好邻居\
 | JSON 实时写入 | 已支持 | 持续覆盖写入最新事件快照 |
 | CSV 周期导出 | 已支持 | 每 5 分钟自动覆盖导出 |
 | 双语界面 | 已支持 | 中文 / English |
-| 打包平台 | 已支持 | Windows，macOS 安装包稍后补充 |
+| 打包平台 | 已支持 | Windows x64、macOS Apple 芯片 ARM64 |
 
 ---
 
 ## 项目截图
+
+以下为 `v1.0.3` macOS DMG 实际运行截图（就绪状态）。
 
 ### 界面上半部分
 
@@ -199,12 +203,19 @@ npm run build
 npm run dist
 ```
 
+仅打包本机 Apple 芯片版 DMG（无 Developer ID 证书时使用本地临时签名）：
+
+```bash
+npm run build
+npx electron-builder --mac dmg --arm64 --publish never -c.mac.identity=-
+```
+
 打包完成后，常见产物包括：
 
-- `dist/renderer/`：前端构建产物
-- `dist/win-unpacked/`：Windows 解包目录
-- `dist/*.exe`：Windows 安装包
-- `dist/*.dmg`：macOS 安装包（在 macOS 上打包时生成）
+- `renderer/`：前端构建产物
+- `release/win-unpacked/`：Windows 解包目录
+- `release/*.exe`：Windows 安装包
+- `release/*.dmg`：macOS 安装包（在 macOS 上打包时生成）
 
 ---
 
@@ -212,8 +223,8 @@ npm run dist
 
 项目当前已经把构建输出和打包输出拆开：
 
-- 前端构建输出：`dist/renderer/`
-- 安装包输出：`dist/`
+- 前端构建输出：`renderer/`
+- 安装包输出：`release/`
 
 这意味着之后再次执行 `npm run build` 时，不会再把已有的安装包产物误清掉。
 
@@ -268,8 +279,8 @@ electron/        Electron 主进程与 preload
 src/             React UI 与监听/判定逻辑
 scripts/         开发辅助脚本
 docs/            README 截图等文档资源
-dist/renderer/   前端构建产物
-dist/            electron-builder 打包输出
+renderer/        前端构建产物
+release/         electron-builder 打包输出
 ```
 
 ---

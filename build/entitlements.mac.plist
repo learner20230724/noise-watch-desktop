@@ -6,6 +6,9 @@
   <true/>
   <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
   <true/>
+  <!-- Ad-hoc builds have no Team ID; allow the bundled Electron frameworks to load. -->
+  <key>com.apple.security.cs.disable-library-validation</key>
+  <true/>
   <key>com.apple.security.device.audio-input</key>
   <true/>
 </dict>
